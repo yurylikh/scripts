@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 function print_extension {
   echo $(stat -c %n "$1" | rev | cut -d. -f1 | rev)
@@ -13,9 +13,19 @@ function compose_line_for {
   echo $(print_extension "$file")" yes ""$header"":""$footer"
 }
 
+function process_files_in_dir {	
+  for file in "$1"/* ; do
+    if [ -f "$file" ] && [ -s "$file" ] ; then
+      echo "$file"
+      echo $(compose_line_for "$file")
+    elif [ -d "$file" ] ; then
+      cd "$file"
+      echo "$(pwd)"
+      $(process_files_in_dir "$(pwd)")
+    fi
+  done
+}
 
-for file in ./* ; do
-  if [ -f "$file" ] && [ -s "$file" ] ; then
-    echo $(compose_line_for "$file")
-  fi
-done
+if [ -n "$#" ] && [ -d "$1" ] ; then 
+  $(process_files_in_dir "$1")
+fi
