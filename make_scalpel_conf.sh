@@ -1,31 +1,37 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-function print_extension {
-  echo $(stat -c %n "$1" | rev | cut -d. -f1 | rev)
-}
-
-function compose_line_for {
+function process_file {
   file="$1"
-  header=$(hexdump -n 8 -e '"\\\x" 1/1 "%02x"' -v "$file")
-  footer=$(hexdump -n 8 -e '"\\\x" 1/1 "%02x"' -v "$file"\
-                        -s $(($(stat -c %s "$file")-8)) )
-#  echo "$file"": has size "$(stat -c %s "$file")" bytes"
-  echo $(print_extension "$file")" yes ""$header"":""$footer"
+  bits=8
+  format='"\\\x" 1/1 "%02x"'
+  extension=${file##*.}
+#  extension=$(stat -c %n "$file"|rev|cut -d. -f1|rev)
+  header=$(hexdump -n $bits -e "$format" -v "$file")
+  footer=$(hexdump -n $bits -e "$format" -v "$file"\
+                   -s $(($(stat -c %s "$file")-$bits)) )
+  echo $extension "y" $header":"$footer
 }
 
-function process_files_in_dir {	
+function process_dir {
   for file in "$1"/* ; do
-    if [ -f "$file" ] && [ -s "$file" ] ; then
-      echo "$file"
-      echo $(compose_line_for "$file")
-    elif [ -d "$file" ] ; then
-      cd "$file"
-      echo "$(pwd)"
-      $(process_files_in_dir "$(pwd)")
+    if [ -d "$file" ] ; then
+      process_dir "$file"
+    elif [ -f "$file" ] && [ -s "$file" ] ; then
+      process_file "$file"
     fi
   done
 }
 
-if [ -n "$#" ] && [ -d "$1" ] ; then 
-  $(process_files_in_dir "$1")
+function main {
+  if [ -d "$1" ] ; then
+    process_dir "$1"
+  fi
+}
+
+
+if [ -z "$#" ] ; then 
+  echo "Incorrect usage."
+  echo "Usage: <script> <dir>"
+else
+  main "$1"
 fi
